@@ -6,8 +6,11 @@ import seaborn as sns
 from data_handler import fetch_transactions, add_transaction, delete_transaction, change_transaction
 
 # Streamlit UI
-st.set_page_config(page_title="Personal Finance Dashboard", layout="wide")
+st.set_page_config(page_title="Finance Tracker", layout="wide")
 
+if "user_id" not in st.session_state or st.session_state["user_id"] is None:
+    st.warning("You need to log in to access this page.")
+    st.stop()
 
 # Title
 st.title("📊 Personal Finance Dashboard")
