@@ -1,133 +1,103 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from data_handler import fetch_transactions, add_transaction, delete_transaction, change_transaction
+from data_handler import authenticate_user, register_user
 
-# Streamlit UI
-st.set_page_config(page_title="Personal Finance Dashboard", layout="wide")
+# Page Configuration
+st.set_page_config(page_title="Login Form", layout="centered")
 
+# Custom CSS
+st.markdown(
+    """
+    <style>
+    body {
+        background: linear-gradient(to right, #a8c0ff, #3f2b96);
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .login-container {
+        width: 400px;
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    .stRadio > div {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+    .stRadio div label {
+        padding: 8px 20px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        background: #f1f1f1;
+    }
+    .stRadio div label[data-selected="true"] {
+        background: linear-gradient(to right, #0052d4, #4364f7);
+        color: white;
+    }
+    .input-box {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    .login-btn {
+        width: 100%;
+        background: linear-gradient(to right, #0052d4, #4364f7);
+        color: white;
+        border: none;
+        padding: 12px;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .switch-text {
+        margin-top: 10px;
+        font-size: 14px;
+    }
+    .switch-text a {
+        color: #0052d4;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# Title
-st.title("📊 Personal Finance Dashboard")
+# Session state for user authentication
+if "user_id" not in st.session_state:
+    st.session_state["user_id"] = None
 
+# Toggle between Login and Signup using st.radio
+option = st.radio("Select Option:", ["Login", "Signup"], horizontal=True, key="login_signup")
 
-# Fetch Data
-df = fetch_transactions()
+st.markdown(f"<h2>{option}</h2>", unsafe_allow_html=True)
 
+# Input Fields
+username = st.text_input("Email Address", placeholder="Enter your email")
+password = st.text_input("Password", type="password", placeholder="Enter your password")
 
-# Sidebar: Add new transaction
-st.sidebar.header("➕ Add New Transaction")
-date = st.sidebar.date_input("Date")
-category = st.sidebar.text_input("Category")
-amount = st.sidebar.number_input("Amount", min_value=0.0)
-txn_type = st.sidebar.selectbox("Type", ["income", "expense"])
-description = st.sidebar.text_area("Description")
-
-if st.sidebar.button("Add Transaction"):
-    add_transaction(date, category, amount, txn_type, description)
-    st.sidebar.success("Transaction Added Successfully!")
-
-
-# Sidebar: Delete transaction
-st.sidebar.header("❌ Delete Transaction")
-delete_id = st.sidebar.number_input("Delete Transaction ID", min_value=1, step=1)
-
-if st.sidebar.button("Delete Transaction"):
-    delete_transaction(delete_id)
-    st.sidebar.success("Transaction Deleted Successfully!")
-
-
-# Sidebar: change transaction
-st.sidebar.header("❌ Change Transaction")
-change_id = st.sidebar.number_input("Change Transaction ID", min_value=1, step=1)
-date = st.sidebar.date_input("Change Date")
-category = st.sidebar.text_input("Change Category")
-amount = st.sidebar.number_input("Change Amount", min_value=0.0)
-txn_type = st.sidebar.selectbox("Change Type", ["income", "expense"])
-description = st.sidebar.text_area("Change Description")
-
-if st.sidebar.button("Change Transaction"):
-    change_transaction(date, category, amount, txn_type, description, change_id)
-    st.sidebar.success("Transaction change Successfully!")
-
-
-# Show Data
-st.subheader("📌 Transactions")
-if df is None:
-    st.error("Error fetching transactions!")
+if option == "Login":
+    st.markdown('<a href="#" style="color: #0052d4; font-size: 14px;">Forgot password?</a>', unsafe_allow_html=True)
+    if st.button("Login", use_container_width=True):
+        user_id = authenticate_user(username, password)
+        if user_id:
+            st.session_state["user_id"] = user_id
+            st.success("Login successful! Redirecting...")
+            st.switch_page("pages/finance_tracker.py")
+        else:
+            st.error("Invalid credentials. Please try again.")
 else:
-    st.dataframe(df)
+    if st.button("Create Account", use_container_width=True):
+        if register_user(username, password):
+            st.success("Account created successfully! Please login.")
+        else:
+            st.error("Username already taken. Try a different one.")
 
-
-# Summary Metrics
-income = df[df['type'] == 'income']['amount'].sum()
-expense = df[df['type'] == 'expense']['amount'].sum()
-balance = income - expense
-
-
-# Display summary metrics
-st.metric("Total Income", f"₹{income:,.2f}", "green")
-st.metric("Total Expenses", f"₹{expense:,.2f}", "red")
-st.metric("Balance", f"₹{balance:,.2f}", "blue")
-
-
-income_df = df[df["type"] == "income"]
-expense_df = df[df["type"] == "expense"]
-
-
-# Visualization options
-option = st.selectbox("Select Analysis", [
-    "Expense Overview", "Income Overview", "Income vs. Expense", "Account Analysis"
-])
-
-# Expense Overview
-if option == "Expense Overview" and not expense_df.empty:
-    df_expense = expense_df.groupby("category")["amount"].sum()
-    if not df_expense.empty:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        colors = sns.color_palette("husl", len(df_expense))
-        wedges, texts, autotexts = ax.pie(
-            df_expense, labels=df_expense.index, autopct='%1.1f%%', startangle=90,
-            colors=colors, wedgeprops={'edgecolor': 'black'}, pctdistance=0.85,
-            textprops={'fontsize': 10}
-        )
-        centre_circle = plt.Circle((0, 0), 0.70, fc='white')
-        plt.gca().add_artist(centre_circle)
-        
-        plt.text(0, 0, 'Expenses', ha='center', va='center', fontsize=14, fontweight='bold', color='black')
-        
-        plt.legend(wedges, df_expense.index, title="Categories", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
-        
-        plt.axis('equal')
-        plt.tight_layout()
-        st.pyplot(fig)
-    else:
-        st.warning("No expense data available to plot.")
-
-# Income Overview
-elif option == "Income Overview" and not income_df.empty:
-    fig, ax = plt.subplots(figsize=(6, 6))
-    income_summary = income_df.groupby("category")["amount"].sum()
-    if not income_summary.empty:
-        ax.pie(income_summary, labels=income_summary.index, autopct='%1.1f%%', colors=['green', 'blue'], textprops={'fontsize': 10})
-        ax.set_title("Income Overview")
-        plt.tight_layout()
-        st.pyplot(fig)
-    else:
-        st.write("No income data available.")
-
-# Income vs Expense
-elif option == "Income vs. Expense":
-    fig, ax = plt.subplots()
-    ax.bar(["Income", "Expense"], [income, expense], color=["green", "red"])
-    ax.set_title("Income vs. Expense")
-    plt.tight_layout()
-    st.pyplot(fig)
-
-# Account Analysis Placeholder
-elif option == "Account Analysis":
-    st.write("Feature coming soon!")
-
-st.write("\n\n")
+st.markdown("</div>", unsafe_allow_html=True)
