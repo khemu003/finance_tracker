@@ -16,8 +16,11 @@ if "user_id" not in st.session_state or st.session_state["user_id"] is None:
 st.title("📊 Personal Finance Dashboard")
 
 
+user_id = st.session_state["user_id"]
+
+
 # Fetch Data
-df = fetch_transactions()
+df = fetch_transactions(user_id)
 
 
 # Sidebar: Add new transaction
