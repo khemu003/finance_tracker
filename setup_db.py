@@ -1,30 +1,30 @@
-import sqlite3
+import mysql.connector
+from database import get_db_connection
 
-conn = sqlite3.connect("finance.db")
+conn = get_db_connection()
 cursor = conn.cursor()
 
-# Users Table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) UNIQUE,
+    password VARCHAR(255)
 )
 """)
 
-# Transactions Table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    date TEXT,
-    category TEXT,
-    amount REAL,
-    type TEXT,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    date DATE,
+    category VARCHAR(255),
+    amount DECIMAL(10,2),
+    type ENUM('income', 'expense'),
     description TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 )
 """)
 
 conn.commit()
+cursor.close()
 conn.close()
